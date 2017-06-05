@@ -1,6 +1,60 @@
 # CarND-Controls-MPC
 Self-Driving Car Engineer Nanodegree Program
 
+## Kinematic Model
+
+Kinematic model is leveraged here for implementing a model predictive control. 
+
+A vehicle's state is established using [x(coordinate),y (corodinate),ψ (orientation),v (velocity)]
+
+Actuator inputs allow us to control the vehicle state, δ for steering angle and a for acceleration (throttle/brake combined)
+
+The model looks like this:
+State: [x,y,ψ,v]
+Actuators: [δ,a]
+
+The equations define the state, actuators and how the state changes over time based on the previous state and current actuator inputs. These are used to implement the Kinematic model.
+
+x[​t+1] ​​= x[​t] ​​+ v[t] ​​∗ cos(ψ[​t]​​) ∗ dt
+
+y[​t+1]​ ​= y[t]​ ​+ v​[t]​​ ∗ sin(ψ​[t]​​) ∗ dt
+
+ψ​[t+1] ​​= ψ[​t]​​ + ​​​​​v[​t] / L ​​​​∗ δ ∗ dt
+
+v​[t+1] ​​= v[​t] ​​+ a[​t] ​​∗ dt
+
+## Errors
+To minimize the error between the reference trajectory and vehicles actual path, first we predict the vehicle’s actual path and then adjust the actuators to minimize the difference between the prediction and the reference trajectory.
+
+We can capture how the errors we are interested in change over time by deriving our kinematic model around these errors as our new state vector.
+
+The new state is [x,y,ψ,v,cte,eψ]
+
+cross track error(cte):
+cte[t+1] = cte[t]+v[t]+sin(eψ[t])*dt
+
+orientation error(eψ):
+eψ[t+1] = eψ[t] + v[t]/L[f]*δ*dt
+
+## Cost Function
+Cost should be a function of how far errors(cte and eψ) are from 0. A few considerations used here are velocity error, the euclidean distance between the current position of the vehicle and the destination, change rate of the control input.
+
+## Polynomial Fitting and MPC Preprocessing
+
+Transform map coordinates into the vehicle coordinates and then fit the transformed waypoints with 3rd order polynomial. And use the fitted polynomial with x=0, y=0 to find initial cte and eψ.
+
+## Timestep length and Frequency
+N is the number of timesteps in the horizon. dt is how much time elapses between actuations. 25 (N) timesteps with duration of each step 50 (dt) milliseconds have been leveraged in the current implementation.
+Larger values of dt result in less frequent actuations, which makes it harder to accurately approximate a continuous reference trajectory, as the values were increased to 1 second the vehicle went off track. Higher acceleration with larger dt values caused the vehicle to go off track on sharp turns.
+N determines the number of variables the optimized by MPC. This is also the major driver of computational cost, a few values tried were 10 and 15.
+
+## Latency handling
+In a real car, an actuation command won't execute instantly - there will be a delay as the command propagates through the system. A realistic delay might be on the order of 100 milliseconds.
+
+This is a problem called "latency", and it's a difficult challenge for some controllers to overcome. But a Model Predictive Controller can adapt quite well because we can model this latency in the system.
+
+100 milliseconds delay is incorporated in the current model using sleep, to accomodate for latency. This means the state is predicted after 100ms.
+
 ---
 
 ## Dependencies
